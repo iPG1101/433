@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>4'33"</title>
+		<script>
+			function load(p, s) {
+				var r = new p();
+				r.src = s;
+				return r;
+			};
+			var state = {
+				'stage': 0,
+				'frames': 0,
+				'canvas': null,
+				'context': null,
+				'running': false,
+				'width': 720,
+				'height': 480,
+				'img': null,
+				'ctx': null,
+				'tmp': null
+			};
+			var media = {
+				'audio': {
+					'white-noise': [load(Audio, 'white-noise.wav')],
+					'text-tone': [load(Audio, 'text-tone.wav')],
+					'text-ring': [load(Audio, 'text-ring.wav')],
+					'a56': [load(Audio, 'a56.mp3')],
+					'cough': [load(Audio, 'cough.wav')],
+				},
+				'image': {
+					'violin': [load(Image, 'violin.png')],
+					'oops': [load(Image, 'oops.png')],
+				}
+			};
+			media.audio['white-noise'][0].onended = function() { this.play() }
+			var drawStage = [
+				function({frames, context, width, height} = arg) {
+					// Stage 0
+					var maxFrames = 200;
+					context.fillStyle = '#09F';
+					context.font = Math.floor(frames / maxFrames * 48) + 'px Impact';
+					context.fillText('Movement I', width/2 - context.measureText('Movement I').width/2, height / 2 - 48);
+					return (frames >= maxFrames);
+				},
+				function({frames, context, width, height} = arg) {
+					// Stage 1
+					var maxFrames = 200;
+					context.fillStyle = '#09F';
+					context.font = Math.floor(frames / maxFrames * 48 + 48) + 'px Impact';
+					context.fillText('Take II', width/2 - context.measureText('Take II').width/2, frames / maxFrames * height + height/2 - 48);
+					return (frames >= maxFrames);
+				},
+				function({frames, context, width, height} = arg) {
+					// Stage 2
+					var maxFrames = 75;
+					var x = width * 0.5 * (frames / maxFrames),
+						y = height * 0.5 * (frames / maxFrames);
+					var w = 256,
+						h = 256;
+					context.save();
+					context.translate(x, y);
+					context.rotate(frames / maxFrames * Math.PI * 2);
+					context.drawImage(media.image.violin[0], 
+						-w/2, 
+						-h/2,
+						w,
+						h
+					);
+					context.restore();
+					return frames >= maxFrames;
+				},
+				function({frames, ctx, context, canvas, width, height} = arg) {
+					// Stage 3
+					var maxFrames = 75;
+					w = (256 + 48) * Math.sin(1 - (frames / 150));
+					context.drawImage(media.image.violin[0], 
+						width/2 - w/2, 
+						height/2 - w/2,
+						w,
+						w
+					);
+					if(frames >= maxFrames) ctx.drawImage(
+						canvas, 0, 0, width, height
+					);
+					return frames >= maxFrames;
+				},
+				function({frames, img, ctx, canvas, context, width, height} = arg) {
+					// Stage 4
+					if(state.tmp == null) {
+						media.audio['text-ring'][0].volume = 0.2;
+						media.audio['text-ring'][0].play();
+						state.tmp = ctx.getImageData(0, 0, width, height);
+					}
+					var d = state.tmp.data;
+					var pixelsFound = 0;
+					for(var i = d.length; i >= 0; i -= 4) {
+						if(d[i] != 0) {
+							pixelsFound ++;
+							if(Math.random() >= 0.25) {
+								var x = (i / 4) % width,
+									y = Math.floor((i / 4) / width);
+								var rand = Math.floor(Math.random()*20),
+									upRand = Math.floor(Math.sin(frames));
+								for(var j = 0; j < 4; j++) {
+									d[i+j+4*rand-(4*width*upRand)] = d[i+j];
+									d[i+j] = 0;
+								}
+							}
+							// d[i+j*rand] *= 0.9;
+						}
+					}
+					context.putImageData(state.tmp, 0, 0);
+					if(pixelsFound <= 10) {
+						media.audio['text-ring'][0].pause();
+					}
+					return (pixelsFound <= 10);
+				},
+				function({frames, img, ctx, context, width, height} = arg) {
+					// Stage 5
+					var maxFrames = 1000,
+						keys = 7;
+					for(var k = 0; k < frames / (maxFrames/keys); k += 0.5) {
+						if(k % 1 != 0.5) {
+							context.fillStyle = '#EEE';
+							context.fillRect(k * width/keys, 0, width/keys, height);
+							context.strokeRect(k * width/keys, 0, width/keys, height);
+						}
+					}
+					for(var k = 0; k < frames / (maxFrames/keys); k += 0.5) {
+						if(k % 1 != 0 && k != 3.5 && k != 6.5) {
+							context.fillStyle = '#000';
+							context.fillRect(k * width/keys + width/(keys*4), 0, width/(keys*2), height/2);
+						}
+					}
+					if(frames >= maxFrames)
+						media.audio.a56[0].play();
+					return (frames >= maxFrames);
+				},
+				function({frames, img, canvas, ctx, context, width, height} = arg) {
+					// Stage 6
+					var maxFrames = 20,
+						keys = 7;
+					for(var k = 0; k < keys; k += 0.5) {
+						if(k % 1 != 0.5) {
+							context.fillStyle = k == 4 ? '#888' : '#EEE';
+							context.fillRect(k * width/keys, 0, width/keys, height);
+							context.strokeRect(k * width/keys, 0, width/keys, height);
+						}
+					}
+					for(var k = 0; k < keys; k += 0.5) {
+						if(k % 1 != 0 && k != 3.5 && k != 6.5) {
+							context.fillStyle = '#000';
+							context.fillRect(k * width/keys + width/(keys*4), 0, width/(keys*2), height/2);
+						}
+					}
+					if(frames >= maxFrames) ctx.drawImage(canvas, 0, 0, width, height);
+					return (frames >= maxFrames);
+				},
+				function({frames, img, ctx, canvas, context, width, height} = arg) {
+					// Stage 7
+					var maxFrames = 333;
+					context.drawImage(img, width/10, height/10, width*0.8, height*0.8);
+					var x = width * 0.5 * (frames / (maxFrames / 3)),
+						y = height * 0.5 * (frames / (maxFrames / 3)),
+						w = 128,
+						h = 192;
+					context.drawImage(media.image.oops[0], x - w/2, y - h/2, w, h);
+					context.fillStyle = '#09F';
+					context.fillText('Movement II', x - w/2, height - (y - h/2));
+					context.strokeText('Movement II', x - w/2, height - (y - h/2));
+					ctx.drawImage(canvas, 0, 0);
+					return (frames >= maxFrames);
+				},
+				function({frames, img, ctx, canvas, context, width, height} = arg) {
+					// Stage 8
+					media.audio['cough'][0].play();
+					return true;
+				},
+				function({frames, img, ctx, canvas, context, width, height} = arg) {
+					// Stage 9
+					// if(state.tmp == null) {
+						state.tmp = ctx.getImageData(0, 0, width, height);
+					// }
+					var d = state.tmp.data;
+					for(var i = d.length; i >= 0; i -= 4) {
+						if(d[i] != 0) {
+							if(Math.random() >= 0.25) {
+								var x = (i / 4) % width,
+									y = Math.floor((i / 4) / width);
+								var rand = Math.floor(Math.random()*20),
+									upRand = Math.floor(Math.sin(frames));
+								for(var j = 0; j < 4; j++) {
+									d[-1+i+j+4*rand-(4*width*upRand)] = d[i+j];
+									d[-1+i+j] = 0;
+								}
+							}
+							// d[i+j*rand] *= 0.9;
+						}
+					}
+					context.putImageData(state.tmp, 0, 0);
+					ctx.putImageData(state.tmp, 0, 0);
+					if(frames >= 40) {
+						ctx.drawImage(canvas, 0, 0);
+					}
+					return (frames >= 40);
+				},
+				function({frames, img, ctx, canvas, context, width, height} = arg) {
+					// Stage 10
+					context.drawImage(img, 0, 0, width, height);
+					state.tmp = ctx.getImageData(0, 0, width, height);
+					var d = state.tmp.data;
+					var pixelsFound = 0;
+					for(var z = 0; z < 50; z++) for(var i = d.length; i >= 0; i -= 4) {
+						if(d[i] != 0) {
+							pixelsFound ++;
+							if(Math.random() >= 0.25) {
+								var x = (i / 4) % width,
+									y = Math.floor((i / 4) / width);
+								var rand = Math.floor(Math.random()*20),
+									upRand = Math.floor(Math.random() * 10);
+								for(var j = 0; j < 4; j++) {
+									d[i+j+4*rand-(4*width*upRand)] = Math.random() > 0.9 ? d[i+j] : 0;
+									d[i+j] = 0;
+								}
+							}
+							// d[i+j*rand] *= 0.9;
+						}
+					}
+					for(;z > 0; z--) {
+						for(var y = 0; y < frames; y++)
+							for(var x = 0; x < frames; x++)
+								d[400 * width + 400 + (y * width + x) * 4] = 255;
+					}
+					context.putImageData(state.tmp, 0, 0);
+					ctx.drawImage(canvas, 0, 0);
+					return (frames > 500);
+				},
+				function({frames, context, width, height} = arg) {
+					// Stage 11
+					var maxFrames = 200;
+					context.fillStyle = '#09F';
+					context.font = Math.floor(frames / maxFrames * 48) + 'px Impact';
+					context.fillText('Movement III', width/2 - context.measureText('Movement III').width/2, height / 2 - 48);
+					return (frames >= maxFrames);
+				},
+				function({frames, context, width, height} = arg) {
+					// Stage 12
+					var maxFrames = 200;
+					context.fillStyle = '#09F';
+					context.font = '48px Impact';
+					context.fillText('Movement III', width/2 - context.measureText('Movement III').width/2, height / 2 - 48);
+					context.font = Math.floor(frames / maxFrames * 36) + 'px Impact';
+					context.fillText('Only one mistake this far!', width/2 - context.measureText('Only one mistake this far!').width/2, height / 2);
+					return (frames >= maxFrames);
+				},
+				function({frames, context, width, height} = arg) {
+					// Stage 2
+					var maxFrames = 75;
+					var x = width * 0.5 * (frames / maxFrames),
+						y = height * 0.5 * (frames / maxFrames);
+					var w = 256,
+						h = 256;
+					context.save();
+					context.translate(x, y);
+					context.rotate(frames / maxFrames * Math.PI * 2);
+					context.drawImage(media.image.violin[0], 
+						-w/2, 
+						-h/2,
+						w,
+						h
+					);
+					context.restore();
+					return frames >= maxFrames;
+				},
+				function({frames, img, ctx, context, width, height} = arg) {
+					// Stage 5
+					var maxFrames = 1000,
+						keys = 7;
+					var x = width * 0.5,
+						y = height * 0.5;
+					var w = 256,
+						h = 256;
+					context.save();
+					context.translate(x, y);
+					context.rotate(frames / maxFrames * Math.PI * 2);
+					context.drawImage(media.image.violin[0], 
+						-w/2, 
+						-h/2,
+						w,
+						h
+					);
+					context.restore();
+					for(var k = 0; k < frames / (maxFrames/keys); k += 0.5) {
+						if(k % 1 != 0.5) {
+							context.fillStyle = '#EEE';
+							context.fillRect(k * width/keys, 0, width/keys, height);
+							context.strokeRect(k * width/keys, 0, width/keys, height);
+						}
+					}
+					for(var k = 0; k < frames / (maxFrames/keys); k += 0.5) {
+						if(k % 1 != 0 && k != 3.5 && k != 6.5) {
+							context.fillStyle = '#000';
+							context.fillRect(k * width/keys + width/(keys*4), 0, width/(keys*2), height/2);
+						}
+					}
+					if(frames >= maxFrames)
+						media.audio.a56[0].play();
+					return (frames >= maxFrames);
+				},
+			];
+			window.addEventListener('click', function() {
+				if(state.running)
+					return;
+				media.audio['text-tone'][0].play();
+				media.audio['white-noise'][0].play();
+				state.img = new OffscreenCanvas(state.width, state.height),
+				state.ctx = state.img.getContext('2d')
+				document.documentElement.classList.add('running');
+				state.running = true;
+				state.canvas = document.querySelector('canvas');
+				state.context = state.canvas.getContext('2d');
+				var s = new Date().getTime();
+				setInterval(function() {
+					state.frames ++;
+					if(!(state.stage in drawStage))
+						return alert(new Date().getTime() - s);
+					state.context.clearRect(0, 0, state.width, state.height);
+					// state.context.fillStyle = '#FFF';
+					// state.context.fillRect(state.width / 2 - 4, state.height / 2 - 4, 8, 8);
+					if(drawStage[state.stage](state)) {
+						state.stage ++;
+						state.tmp = null;
+						state.frames = 0;
+					}
+				}, 40);
+			});
+		</script>
+		<style>
+			body {
+				background-color: #444;
+			}
+			canvas {
+				background-color: #666;
+				position: fixed;
+				left: calc((100vw - 150vh) / 2);
+				top: 0;
+				width: calc(150vh);
+				height: 100vh;
+			}
+			.running body, .running canvas {
+				transition-duration: 1s;
+				background-color: #000;
+			}
+		</style>
+	</head>
+	<body>
+		<canvas width=720 height=480></canvas>
+	</body>
+</html>
